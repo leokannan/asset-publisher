@@ -57,7 +57,8 @@ not, see <http://www.gnu.org/licenses/>.
 		%>
 
 		<c:choose>
-			<c:when test="<%=rootPortletId.equals(PortletKeys.RELATED_ASSETS)%>">
+			<c:when
+				test="<%=rootPortletId.equals(PortletKeys.RELATED_ASSETS)%>">
 				<aui:input name="preferences--selectionStyle--" type="hidden"
 					value="dynamic" />
 			</c:when>
@@ -77,40 +78,36 @@ not, see <http://www.gnu.org/licenses/>.
 
 			<%
 				Set<Group> groups = new HashSet<Group>();
+				groups.add(company.getGroup());
+				groups.add(scopeGroup);
 
-							groups.add(company.getGroup());
-							groups.add(scopeGroup);
+				for (Group group : GroupLocalServiceUtil.getGroups(-1, -1)) {
+					 if (group.isControlPanel()) {
+						continue;
+					}
 
-							for (Group group : GroupLocalServiceUtil.getGroups(-1, -1)) {
-								if (group.isControlPanel()) {
-									continue;
-								}
+					if (group.isRegularSite() || group.isOrganization()) {
+						groups.add(group);
+					}
+				}				
 
-								if (group.isRegularSite() || group.isOrganization()) {
-									groups.add(group);
-								}
-							}
+				for (Layout curLayout : LayoutLocalServiceUtil.getLayouts(layout.getGroupId(), layout.isPrivateLayout())) {
+					if (curLayout.hasScopeGroup()) {
+						groups.add(curLayout.getScopeGroup());
+					}
+				}
 
-							for (Layout curLayout : LayoutLocalServiceUtil.getLayouts(layout.getGroupId(), layout.isPrivateLayout())) {
-								if (curLayout.hasScopeGroup()) {
-									groups.add(curLayout.getScopeGroup());
-								}
-							}
+				// Left list
+				List<KeyValuePair> scopesLeftList = new ArrayList<KeyValuePair>();
 
-							// Left list
-							List<KeyValuePair> scopesLeftList = new ArrayList<KeyValuePair>();
+				for (long groupId : groupIds) {
+					Group group = GroupLocalServiceUtil.getGroup(groupId);
+					scopesLeftList.add(new KeyValuePair(_getKey(group, scopeGroupId), _getName(group, locale)));
+				}
 
-							for (long groupId : groupIds) {
-								Group group = GroupLocalServiceUtil.getGroup(groupId);
-
-								scopesLeftList.add(new KeyValuePair(_getKey(group, scopeGroupId), _getName(group, locale)));
-							}
-
-							// Right list
-
-							List<KeyValuePair> scopesRightList = new ArrayList<KeyValuePair>();
-
-							Arrays.sort(groupIds);
+				// Right list
+				List<KeyValuePair> scopesRightList = new ArrayList<KeyValuePair>();
+				Arrays.sort(groupIds);
 			%>
 
 			<aui:select label="" name="preferences--defaultScope--"
@@ -123,9 +120,9 @@ not, see <http://www.gnu.org/licenses/>.
 
 					<%
 						for (Group group : groups) {
-											if (Arrays.binarySearch(groupIds, group.getGroupId()) < 0) {
-												scopesRightList.add(new KeyValuePair(_getKey(group, scopeGroupId), _getName(group, locale)));
-											}
+							if (Arrays.binarySearch(groupIds, group.getGroupId()) < 0) {
+								scopesRightList.add(new KeyValuePair(_getKey(group, scopeGroupId), _getName(group, locale)));
+							}
 					%>
 
 					<aui:option label="<%=_getName(group, locale)%>"
@@ -169,27 +166,27 @@ not, see <http://www.gnu.org/licenses/>.
 						<aui:fieldset>
 
 							<%
-								classNameIds = availableClassNameIds;
+							classNameIds = availableClassNameIds;
 
-															String portletId = portletResource;
+							String portletId = portletResource;
 
-															for (long groupId : groupIds) {
+							for (long groupId : groupIds) {
 							%>
 
-							<div class="add-asset-selector">
-								<div class="lfr-meta-actions edit-controls">
-									<%@ include file="/html/portlet/asset_publisher/add_asset.jspf"%>
+								<div class="add-asset-selector">
+									<div class="lfr-meta-actions edit-controls">
+										<%@ include file="/html/portlet/asset_publisher/add_asset.jspf"%>
 
-									<liferay-ui:icon-menu align="left"
+										<liferay-ui:icon-menu align="left"
 										cssClass="select-existing-selector"
 										icon='<%=themeDisplay.getPathThemeImages() + "/common/search.png"%>'
 										message="select-existing" showWhenSingleIcon="<%=true%>">
 
 										<%
 											for (AssetRendererFactory curRendererFactory : AssetRendererFactoryRegistryUtil.getAssetRendererFactories()) {
-																					if (curRendererFactory.isSelectable()) {
-																						String taglibURL = "javascript:" + renderResponse.getNamespace() + "selectionForType('" + groupId
-																								+ "', '" + curRendererFactory.getClassName() + "')";
+												if (curRendererFactory.isSelectable()) {
+													String taglibURL = "javascript:" + renderResponse.getNamespace() + "selectionForType('" + groupId
+																					+ "', '" + curRendererFactory.getClassName() + "')";
 										%>
 
 										<liferay-ui:icon
@@ -202,134 +199,134 @@ not, see <http://www.gnu.org/licenses/>.
 																				}
 										%>
 
-									</liferay-ui:icon-menu>
+										</liferay-ui:icon-menu>
+									</div>
 								</div>
-							</div>
 
 							<%
+							}
+
+							List<String> deletedAssets = new ArrayList<String>();
+
+							List<String> headerNames = new ArrayList<String>();
+
+							headerNames.add("type");
+							headerNames.add("title");
+							headerNames.add(StringPool.BLANK);
+
+							SearchContainer searchContainer = new SearchContainer(renderRequest, new DisplayTerms(renderRequest), new DisplayTerms(
+																renderRequest), SearchContainer.DEFAULT_CUR_PARAM, SearchContainer.DEFAULT_DELTA, configurationRenderURL,
+																headerNames, LanguageUtil.get(pageContext, "no-assets-selected"));
+
+							int total = assetEntryXmls.length;
+
+							searchContainer.setTotal(total);
+
+							List results = ListUtil.fromArray(assetEntryXmls);
+
+							int end = (assetEntryXmls.length < searchContainer.getEnd()) ? assetEntryXmls.length : searchContainer.getEnd();
+
+							results = results.subList(searchContainer.getStart(), end);
+
+							searchContainer.setResults(results);
+
+							List resultRows = searchContainer.getResultRows();
+
+							for (int i = 0; i < results.size(); i++) {
+								String assetEntryXml = (String) results.get(i);
+
+								Document doc = SAXReaderUtil.read(assetEntryXml);
+
+								Element root = doc.getRootElement();
+
+								int assetEntryOrder = searchContainer.getStart() + i;
+
+								DocUtil.add(root, "asset-order", assetEntryOrder);
+
+								if (assetEntryOrder == (total - 1)) {
+									DocUtil.add(root, "last", true);
+								} else {
+									DocUtil.add(root, "last", false);
 								}
 
-															List<String> deletedAssets = new ArrayList<String>();
+								String assetEntryClassName = root.element("asset-entry-type").getText();
+								String assetEntryUuid = root.element("asset-entry-uuid").getText();
 
-															List<String> headerNames = new ArrayList<String>();
+								AssetEntry assetEntry = null;
 
-															headerNames.add("type");
-															headerNames.add("title");
-															headerNames.add(StringPool.BLANK);
+								boolean deleteAssetEntry = true;
 
-															SearchContainer searchContainer = new SearchContainer(renderRequest, new DisplayTerms(renderRequest), new DisplayTerms(
-																	renderRequest), SearchContainer.DEFAULT_CUR_PARAM, SearchContainer.DEFAULT_DELTA, configurationRenderURL,
-																	headerNames, LanguageUtil.get(pageContext, "no-assets-selected"));
+								for (long groupId : groupIds) {
+									try {
+											assetEntry = AssetEntryLocalServiceUtil.getEntry(groupId, assetEntryUuid);
 
-															int total = assetEntryXmls.length;
+											assetEntry = assetEntry.toEscapedModel();
 
-															searchContainer.setTotal(total);
+											deleteAssetEntry = false;
+										} catch (NoSuchEntryException nsee) {
+										}
+								}
 
-															List results = ListUtil.fromArray(assetEntryXmls);
+								if (deleteAssetEntry) {
+									deletedAssets.add(assetEntryUuid);
 
-															int end = (assetEntryXmls.length < searchContainer.getEnd()) ? assetEntryXmls.length : searchContainer.getEnd();
+									continue;
+								}
 
-															results = results.subList(searchContainer.getStart(), end);
+								ResultRow row = new ResultRow(doc, null, assetEntryOrder);
 
-															searchContainer.setResults(results);
+								PortletURL rowURL = renderResponse.createRenderURL();
 
-															List resultRows = searchContainer.getResultRows();
+								rowURL.setParameter("struts_action", "/portlet_configuration/edit_configuration");
+								rowURL.setParameter("redirect", redirect);
+								rowURL.setParameter("backURL", redirect);
+								rowURL.setParameter("portletResource", portletResource);
+								rowURL.setParameter("typeSelection", assetEntryClassName);
+								rowURL.setParameter("assetEntryId", String.valueOf(assetEntry.getEntryId()));
+								rowURL.setParameter("assetEntryOrder", String.valueOf(assetEntryOrder));
 
-															for (int i = 0; i < results.size(); i++) {
-																String assetEntryXml = (String) results.get(i);
+								// Type
 
-																Document doc = SAXReaderUtil.read(assetEntryXml);
+								row.addText(ResourceActionsUtil.getModelResource(locale, assetEntryClassName), rowURL);
 
-																Element root = doc.getRootElement();
+								// Title
 
-																int assetEntryOrder = searchContainer.getStart() + i;
-
-																DocUtil.add(root, "asset-order", assetEntryOrder);
-
-																if (assetEntryOrder == (total - 1)) {
-																	DocUtil.add(root, "last", true);
-																} else {
-																	DocUtil.add(root, "last", false);
-																}
-
-																String assetEntryClassName = root.element("asset-entry-type").getText();
-																String assetEntryUuid = root.element("asset-entry-uuid").getText();
-
-																AssetEntry assetEntry = null;
-
-																boolean deleteAssetEntry = true;
-
-																for (long groupId : groupIds) {
-																	try {
-																		assetEntry = AssetEntryLocalServiceUtil.getEntry(groupId, assetEntryUuid);
-
-																		assetEntry = assetEntry.toEscapedModel();
-
-																		deleteAssetEntry = false;
-																	} catch (NoSuchEntryException nsee) {
-																	}
-																}
-
-																if (deleteAssetEntry) {
-																	deletedAssets.add(assetEntryUuid);
-
-																	continue;
-																}
-
-																ResultRow row = new ResultRow(doc, null, assetEntryOrder);
-
-																PortletURL rowURL = renderResponse.createRenderURL();
-
-																rowURL.setParameter("struts_action", "/portlet_configuration/edit_configuration");
-																rowURL.setParameter("redirect", redirect);
-																rowURL.setParameter("backURL", redirect);
-																rowURL.setParameter("portletResource", portletResource);
-																rowURL.setParameter("typeSelection", assetEntryClassName);
-																rowURL.setParameter("assetEntryId", String.valueOf(assetEntry.getEntryId()));
-																rowURL.setParameter("assetEntryOrder", String.valueOf(assetEntryOrder));
-
-																// Type
-
-																row.addText(ResourceActionsUtil.getModelResource(locale, assetEntryClassName), rowURL);
-
-																// Title
-
-																AssetRendererFactory assetRendererFactory = AssetRendererFactoryRegistryUtil
+								AssetRendererFactory assetRendererFactory = AssetRendererFactoryRegistryUtil
 																		.getAssetRendererFactoryByClassName(assetEntry.getClassName());
 
-																AssetRenderer assetRenderer = assetRendererFactory.getAssetRenderer(assetEntry.getClassPK());
+								AssetRenderer assetRenderer = assetRendererFactory.getAssetRenderer(assetEntry.getClassPK());
 
-																String title = HtmlUtil.escape(assetRenderer.getTitle(locale));
+								String title = HtmlUtil.escape(assetRenderer.getTitle(locale));
 
-																if (assetEntryClassName.equals(DLFileEntryConstants.getClassName())) {
-																	FileEntry fileEntry = DLAppLocalServiceUtil.getFileEntry(assetEntry.getClassPK());
+								if (assetEntryClassName.equals(DLFileEntryConstants.getClassName())) {
+									FileEntry fileEntry = DLAppLocalServiceUtil.getFileEntry(assetEntry.getClassPK());
 
-																	fileEntry = fileEntry.toEscapedModel();
+									fileEntry = fileEntry.toEscapedModel();
 
-																	StringBundler sb = new StringBundler(6);
+									StringBundler sb = new StringBundler(6);
 
-																	sb.append("<img alt=\"\" class=\"dl-file-icon\" src=\"");
-																	sb.append(themeDisplay.getPathThemeImages());
-																	sb.append("/file_system/small/");
-																	sb.append(fileEntry.getIcon());
-																	sb.append(".png\" />");
-																	sb.append(title);
+									sb.append("<img alt=\"\" class=\"dl-file-icon\" src=\"");
+									sb.append(themeDisplay.getPathThemeImages());
+									sb.append("/file_system/small/");
+									sb.append(fileEntry.getIcon());
+									sb.append(".png\" />");
+									sb.append(title);
 
-																	row.addText(sb.toString(), rowURL);
-																} else {
-																	row.addText(title, rowURL);
-																}
+									row.addText(sb.toString(), rowURL);
+								} else {
+									row.addText(title, rowURL);
+								}
 
-																// Action
+								// Action
 
-																row.addJSP("right", SearchEntry.DEFAULT_VALIGN, "/html/portlet/asset_publisher/asset_selection_action.jsp");
+								row.addJSP("right", SearchEntry.DEFAULT_VALIGN, "/html/portlet/asset_publisher/asset_selection_action.jsp");
 
-																// Add result row
+								// Add result row
 
-																resultRows.add(row);
-															}
+								resultRows.add(row);
+							}
 
-															AssetPublisherUtil.removeAndStoreSelection(deletedAssets, preferences);
+							AssetPublisherUtil.removeAndStoreSelection(deletedAssets, preferences);
 							%>
 
 							<c:if test="<%=!deletedAssets.isEmpty()%>">
@@ -375,22 +372,22 @@ not, see <http://www.gnu.org/licenses/>.
 							<%
 								Set<Long> availableClassNameIdsSet = SetUtil.fromArray(availableClassNameIds);
 
-															// Left list
+								// Left list
 
-															List<KeyValuePair> typesLeftList = new ArrayList<KeyValuePair>();
+								List<KeyValuePair> typesLeftList = new ArrayList<KeyValuePair>();
 
-															for (long classNameId : classNameIds) {
-																String className = PortalUtil.getClassName(classNameId);
+								for (long classNameId : classNameIds) {
+									String className = PortalUtil.getClassName(classNameId);
 
-																typesLeftList.add(new KeyValuePair(String.valueOf(classNameId), ResourceActionsUtil.getModelResource(locale,
-																		className)));
-															}
+									typesLeftList.add(new KeyValuePair(String.valueOf(classNameId), ResourceActionsUtil.getModelResource(locale,
+																className)));
+									}
 
-															// Right list
+									// Right list
 
-															List<KeyValuePair> typesRightList = new ArrayList<KeyValuePair>();
+									List<KeyValuePair> typesRightList = new ArrayList<KeyValuePair>();
 
-															Arrays.sort(classNameIds);
+									Arrays.sort(classNameIds);
 							%>
 
 							<aui:select label="" name="preferences--anyAssetType--">
@@ -405,12 +402,12 @@ not, see <http://www.gnu.org/licenses/>.
 
 									<%
 										for (long classNameId : availableClassNameIdsSet) {
-																			ClassName className = ClassNameLocalServiceUtil.getClassName(classNameId);
+											ClassName className = ClassNameLocalServiceUtil.getClassName(classNameId);
 
-																			if (Arrays.binarySearch(classNameIds, classNameId) < 0) {
-																				typesRightList.add(new KeyValuePair(String.valueOf(classNameId), ResourceActionsUtil.getModelResource(
-																						locale, className.getValue())));
-																			}
+											if (Arrays.binarySearch(classNameIds, classNameId) < 0) {
+												typesRightList.add(new KeyValuePair(String.valueOf(classNameId), ResourceActionsUtil.getModelResource(
+																		locale, className.getValue())));
+											}
 									%>
 
 									<aui:option
@@ -431,7 +428,8 @@ not, see <http://www.gnu.org/licenses/>.
 								typesRightList = ListUtil.sort(typesRightList, new KeyValuePairComparator(false, true));
 							%>
 
-							<div class="<%=anyAssetType ? "aui-helper-hidden" : ""%>"
+							<div
+								class="<%=anyAssetType ? "aui-helper-hidden" : ""%>"
 								id="<portlet:namespace />classNamesBoxes">
 								<liferay-ui:input-move-boxes leftBoxName="currentClassNameIds"
 									leftList="<%=typesLeftList%>" leftReorder="true"
@@ -441,39 +439,39 @@ not, see <http://www.gnu.org/licenses/>.
 
 							<%
 								for (AssetRendererFactory assetRendererFactory : AssetRendererFactoryRegistryUtil.getAssetRendererFactories()) {
-																if (assetRendererFactory.getClassTypes(new long[] { themeDisplay.getCompanyGroupId(), scopeGroupId },
-																		themeDisplay.getLocale()) == null) {
-																	continue;
-																}
+									if (assetRendererFactory.getClassTypes(new long[] { themeDisplay.getCompanyGroupId(), scopeGroupId },
+																	themeDisplay.getLocale()) == null) {
+										continue;
+									}
 
-																classTypesAssetRendererFactories.add(assetRendererFactory);
+									classTypesAssetRendererFactories.add(assetRendererFactory);
 
-																Map<Long, String> assetAvailableClassTypes = assetRendererFactory.getClassTypes(
+									Map<Long, String> assetAvailableClassTypes = assetRendererFactory.getClassTypes(
 																		new long[] { themeDisplay.getCompanyGroupId(), scopeGroupId }, themeDisplay.getLocale());
 
-																String className = AssetPublisherUtil.getClassName(assetRendererFactory);
+									String className = AssetPublisherUtil.getClassName(assetRendererFactory);
 
-																Long[] assetAvailableClassTypeIds = ArrayUtil.toLongArray(assetAvailableClassTypes.keySet().toArray());
-																Long[] assetSelectedClassTypeIds = AssetPublisherUtil.getClassTypeIds(preferences, className,
+									Long[] assetAvailableClassTypeIds = ArrayUtil.toLongArray(assetAvailableClassTypes.keySet().toArray());
+									Long[] assetSelectedClassTypeIds = AssetPublisherUtil.getClassTypeIds(preferences, className,
 																		assetAvailableClassTypeIds);
 
-																// Left list
+									// Left list
 
-																List<KeyValuePair> subTypesLeftList = new ArrayList<KeyValuePair>();
+									List<KeyValuePair> subTypesLeftList = new ArrayList<KeyValuePair>();
 
-																for (long subTypeId : assetSelectedClassTypeIds) {
-																	subTypesLeftList.add(new KeyValuePair(String.valueOf(subTypeId), HtmlUtil.escape(assetAvailableClassTypes
+									for (long subTypeId : assetSelectedClassTypeIds) {
+														subTypesLeftList.add(new KeyValuePair(String.valueOf(subTypeId), HtmlUtil.escape(assetAvailableClassTypes
 																			.get(subTypeId))));
-																}
+									}
 
-																Arrays.sort(assetSelectedClassTypeIds);
+									Arrays.sort(assetSelectedClassTypeIds);
 
-																// Right list
+									// Right list
 
-																List<KeyValuePair> subTypesRightList = new ArrayList<KeyValuePair>();
+									List<KeyValuePair> subTypesRightList = new ArrayList<KeyValuePair>();
 
-																boolean anyAssetSubType = GetterUtil.getBoolean(preferences.getValue("anyClassType" + className,
-																		Boolean.TRUE.toString()));
+									boolean anyAssetSubType = GetterUtil.getBoolean(preferences.getValue("anyClassType" + className,
+															Boolean.TRUE.toString()));
 							%>
 
 							<div
@@ -494,10 +492,10 @@ not, see <http://www.gnu.org/licenses/>.
 
 										<%
 											for (Long classTypeId : assetAvailableClassTypes.keySet()) {
-																					if (Arrays.binarySearch(assetSelectedClassTypeIds, classTypeId) < 0) {
+												if (Arrays.binarySearch(assetSelectedClassTypeIds, classTypeId) < 0) {
 																						subTypesRightList.add(new KeyValuePair(String.valueOf(classTypeId), HtmlUtil
 																								.escape(assetAvailableClassTypes.get(classTypeId))));
-																					}
+												}
 										%>
 
 										<aui:option
@@ -551,38 +549,38 @@ not, see <http://www.gnu.org/licenses/>.
 								<%
 									String queryLogicIndexesParam = ParamUtil.getString(request, "queryLogicIndexes");
 
-																int[] queryLogicIndexes = null;
+									int[] queryLogicIndexes = null;
 
-																if (Validator.isNotNull(queryLogicIndexesParam)) {
-																	queryLogicIndexes = StringUtil.split(queryLogicIndexesParam, 0);
-																} else {
-																	queryLogicIndexes = new int[0];
+									if (Validator.isNotNull(queryLogicIndexesParam)) {
+													queryLogicIndexes = StringUtil.split(queryLogicIndexesParam, 0);
+									} else {
+											queryLogicIndexes = new int[0];
 
-																	for (int i = 0; true; i++) {
-																		String queryValues = PrefsParamUtil.getString(preferences, request, "queryValues" + i);
+											for (int i = 0; true; i++) {
+												String queryValues = PrefsParamUtil.getString(preferences, request, "queryValues" + i);
 
-																		if (Validator.isNull(queryValues)) {
-																			break;
-																		}
+												if (Validator.isNull(queryValues)) {
+													break;
+												}
 
-																		queryLogicIndexes = ArrayUtil.append(queryLogicIndexes, i);
-																	}
+												queryLogicIndexes = ArrayUtil.append(queryLogicIndexes, i);
+												}
 
-																	if (queryLogicIndexes.length == 0) {
-																		queryLogicIndexes = ArrayUtil.append(queryLogicIndexes, -1);
-																	}
-																}
+												if (queryLogicIndexes.length == 0) {
+													queryLogicIndexes = ArrayUtil.append(queryLogicIndexes, -1);
+												}
+											}
 
-																int index = 0;
+											int index = 0;
 
-																for (int queryLogicIndex : queryLogicIndexes) {
-																	String queryValues = StringUtil.merge(preferences.getValues("queryValues" + queryLogicIndex, new String[0]));
-																	String tagNames = ParamUtil.getString(request, "queryTagNames" + queryLogicIndex, queryValues);
-																	String categoryIds = ParamUtil.getString(request, "queryCategoryIds" + queryLogicIndex, queryValues);
+											for (int queryLogicIndex : queryLogicIndexes) {
+												String queryValues = StringUtil.merge(preferences.getValues("queryValues" + queryLogicIndex, new String[0]));
+												String tagNames = ParamUtil.getString(request, "queryTagNames" + queryLogicIndex, queryValues);
+												String categoryIds = ParamUtil.getString(request, "queryCategoryIds" + queryLogicIndex, queryValues);
 
-																	if (Validator.isNotNull(tagNames) || Validator.isNotNull(categoryIds) || (queryLogicIndexes.length == 1)) {
-																		request.setAttribute("configuration.jsp-index", String.valueOf(index));
-																		request.setAttribute("configuration.jsp-queryLogicIndex", String.valueOf(queryLogicIndex));
+												if (Validator.isNotNull(tagNames) || Validator.isNotNull(categoryIds) || (queryLogicIndexes.length == 1)) {
+													request.setAttribute("configuration.jsp-index", String.valueOf(index));
+													request.setAttribute("configuration.jsp-queryLogicIndex", String.valueOf(queryLogicIndex));
 								%>
 
 								<div class="lfr-form-row">
@@ -593,10 +591,10 @@ not, see <http://www.gnu.org/licenses/>.
 								</div>
 
 								<%
-									}
+												}
 
-																	index++;
-																}
+												index++;
+									}
 								%>
 
 							</aui:fieldset>
@@ -677,9 +675,11 @@ not, see <http://www.gnu.org/licenses/>.
 								</aui:select> <aui:select inlineField="<%=true%>" label=""
 									name="preferences--orderByType1--">
 									<aui:option label="ascending"
-										selected='<%=orderByType1.equals("ASC")%>' value="ASC" />
+										selected='<%=orderByType1.equals("ASC")%>'
+										value="ASC" />
 									<aui:option label="descending"
-										selected='<%=orderByType1.equals("DESC")%>' value="DESC" />
+										selected='<%=orderByType1.equals("DESC")%>'
+										value="DESC" />
 								</aui:select>
 							</span>
 
@@ -714,9 +714,11 @@ not, see <http://www.gnu.org/licenses/>.
 								</aui:select> <aui:select inlineField="<%=true%>" label=""
 									name="preferences--orderByType2--">
 									<aui:option label="ascending"
-										selected='<%=orderByType2.equals("ASC")%>' value="ASC" />
+										selected='<%=orderByType2.equals("ASC")%>'
+										value="ASC" />
 									<aui:option label="descending"
-										selected='<%=orderByType2.equals("DESC")%>' value="DESC" />
+										selected='<%=orderByType2.equals("DESC")%>'
+										value="DESC" />
 								</aui:select>
 							</span>
 
@@ -730,11 +732,11 @@ not, see <http://www.gnu.org/licenses/>.
 									<%
 										Group companyGroup = company.getGroup();
 
-																		if (scopeGroupId != companyGroup.getGroupId()) {
-																			List<AssetVocabulary> assetVocabularies = AssetVocabularyLocalServiceUtil.getGroupVocabularies(scopeGroupId,
+										if (scopeGroupId != companyGroup.getGroupId()) {
+											List<AssetVocabulary> assetVocabularies = AssetVocabularyLocalServiceUtil.getGroupVocabularies(scopeGroupId,
 																					false);
 
-																			if (!assetVocabularies.isEmpty()) {
+											if (!assetVocabularies.isEmpty()) {
 									%>
 
 									<optgroup label="<liferay-ui:message key="vocabularies" />">
@@ -744,7 +746,8 @@ not, see <http://www.gnu.org/licenses/>.
 																						assetVocabulary = assetVocabulary.toEscapedModel();
 										%>
 
-										<aui:option label="<%=assetVocabulary.getTitle(locale)%>"
+										<aui:option
+											label="<%=assetVocabulary.getTitle(locale)%>"
 											selected="<%=assetVocabularyId == assetVocabulary.getVocabularyId()%>"
 											value="<%=assetVocabulary.getVocabularyId()%>" />
 
@@ -763,7 +766,7 @@ not, see <http://www.gnu.org/licenses/>.
 										List<AssetVocabulary> assetVocabularies = AssetVocabularyLocalServiceUtil.getGroupVocabularies(
 																				companyGroup.getGroupId(), false);
 
-																		if (!assetVocabularies.isEmpty()) {
+										if (!assetVocabularies.isEmpty()) {
 									%>
 
 									<optgroup
@@ -774,7 +777,8 @@ not, see <http://www.gnu.org/licenses/>.
 																					assetVocabulary = assetVocabulary.toEscapedModel();
 										%>
 
-										<aui:option label="<%=assetVocabulary.getTitle(locale)%>"
+										<aui:option
+											label="<%=assetVocabulary.getTitle(locale)%>"
 											selected="<%=assetVocabularyId == assetVocabulary.getVocabularyId()%>"
 											value="<%=assetVocabulary.getVocabularyId()%>" />
 
@@ -844,7 +848,8 @@ not, see <http://www.gnu.org/licenses/>.
 									<aui:option label="RSS 2.0"
 										selected='<%=rssFormat.equals("rss20")%>' value="rss20" />
 									<aui:option label="Atom 1.0"
-										selected='<%=rssFormat.equals("atom10")%>' value="atom10" />
+										selected='<%=rssFormat.equals("atom10")%>'
+										value="atom10" />
 								</aui:select>
 							</div>
 						</aui:fieldset>
